@@ -46,7 +46,7 @@ describe("Catálogo", () => {
   it("repite el detalle con 304 cuando el ETag coincide", async () => {
     const primero = await request(aplicacion).get("/api/projects/1201-30001").set("Authorization", "Bearer staff-token");
     expect(primero.headers["cache-control"]).toContain("private");
-    expect(primero.headers["cache-control"]).toContain("no-store");
+    expect(primero.headers["cache-control"]).toContain("no-cache");
     const etag = primero.headers.etag;
     const segundo = await request(aplicacion)
       .get("/api/projects/1201-30001")

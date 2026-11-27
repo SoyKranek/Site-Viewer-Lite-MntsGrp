@@ -14,7 +14,7 @@ export function crearReporte(
     return { ok: false, fallo: { status: 400, error: "Bad request" } };
   }
   const datos = cuerpo as { title?: unknown; level?: unknown; spaceId?: unknown };
-  if (typeof datos.title !== "string" || datos.title.length < 1 || datos.title.length > 120) {
+  if (typeof datos.title !== "string" || datos.title.trim().length < 1 || datos.title.length > 120) {
     return { ok: false, fallo: { status: 400, error: "Bad request" } };
   }
   if (typeof datos.level !== "string" || !proyecto.levels.includes(datos.level)) {

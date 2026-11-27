@@ -2,7 +2,6 @@
 
 import { existsSync } from "node:fs";
 import { Router, type Request, type Response } from "express";
-import { exigirUsuario } from "./acceso.js";
 import {
   cargarEspacios,
   cargarProyectos,
@@ -24,10 +23,16 @@ function noEncontrado(res: Response): void {
   res.status(404).json({ error: "Not found" });
 }
 
+function coincideEtag(cabecera: string | undefined, etag: string): boolean {
+  if (!cabecera) return false;
+  return cabecera.split(",").some((valor) => {
+    const limpio = valor.trim().replace(/^W\//, "");
+    return limpio === "*" || limpio === etag;
+  });
+}
+
 export function crearRutas(): Router {
   const rutas = Router();
-  rutas.use("/api", exigirUsuario);
-
   rutas.get("/api/projects", (req, res) => {
     res.setHeader("Cache-Control", "private, no-store");
     res.json(listar(cargarProyectos(), usuario(res)));
@@ -46,8 +51,10 @@ export function crearRutas(): Router {
     const detalle = detallePara(proyecto, usuario(res));
     const etag = etagDe(detalle);
     res.setHeader("ETag", etag);
-    res.setHeader("Cache-Control", "private, no-store");
-    if (req.header("if-none-match") === etag) {
+    // no-cache permite guardar y obliga a revalidar; private excluye cachés compartidas.
+    res.setHeader("Cache-Control", "private, no-cache");
+    res.setHeader("Vary", "Authorization");
+    if (coincideEtag(req.header("if-none-match"), etag)) {
       res.status(304).end();
       return;
     }
