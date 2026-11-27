@@ -35,15 +35,25 @@ const clienteReal: Cliente = {
 export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal): void {
   raiz.innerHTML = `
     <aside class="columna">
+      <header class="marca"><strong>Site Viewer</strong><span>Lite</span></header>
+      <p class="seccion">Account</p>
       <div id="tokens"></div>
+      <p class="seccion">Projects</p>
+      <input id="buscar" type="search" placeholder="Filter projects" />
       <div id="lista"></div>
       <div id="ficha"></div>
       <label>Level <select id="filtro"><option value="all">All levels</option></select></label>
       <div id="panel" class="panel"></div>
-      <button id="cargar" type="button">Load point cloud</button>
-      <button id="cancelar" type="button">Cancel</button>
+      <div class="fila">
+        <button id="cargar" type="button">Load point cloud</button>
+        <button id="cancelar" type="button">Cancel</button>
+      </div>
+      <button id="encuadrar" type="button">Fit view</button>
       <progress id="progreso" value="0" max="1"></progress>
+      <p id="estado"></p>
       <p id="error" class="error"></p>
+      <p class="seccion">Issues</p>
+      <ul id="notas"></ul>
       <form id="reporte">
         <input id="titulo" name="title" maxlength="120" placeholder="Title" />
         <select id="nivel"></select>
@@ -92,6 +102,8 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     pintarPanel();
     error("");
     raiz.querySelector("#ficha")!.textContent = "";
+    raiz.querySelector("#notas")!.textContent = "";
+    raiz.querySelector("#estado")!.textContent = "";
     raiz.querySelector("#resultado")!.textContent = "";
     (raiz.querySelector("#progreso") as HTMLProgressElement).value = 0;
   }
@@ -122,8 +134,35 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
       const boton = document.createElement("button");
       boton.type = "button";
       boton.textContent = item.name;
-      boton.addEventListener("click", () => elegirProyecto(item.id));
+      boton.addEventListener("click", () => {
+        nodo.querySelectorAll("button").forEach((otro) => otro.classList.remove("activo"));
+        boton.classList.add("activo");
+        void elegirProyecto(item.id);
+      });
       nodo.append(boton);
+    }
+    filtrarLista();
+  }
+
+  function filtrarLista() {
+    const texto = (raiz.querySelector("#buscar") as HTMLInputElement).value.trim().toLowerCase();
+    for (const boton of raiz.querySelectorAll<HTMLButtonElement>("#lista button")) {
+      boton.hidden = texto.length > 0 && !boton.textContent!.toLowerCase().includes(texto);
+    }
+  }
+
+  async function pintarNotas() {
+    const nodo = raiz.querySelector("#notas")!;
+    nodo.innerHTML = "";
+    if (!proyecto) return;
+    const respuesta = await cliente.get(`/api/projects/${proyecto}/issues`, token);
+    if (!respuesta.ok) return;
+    const notas = (await respuesta.json()) as { id: string; title: string; level: string }[];
+    if (!Array.isArray(notas)) return;
+    for (const nota of notas) {
+      const item = document.createElement("li");
+      item.textContent = `${nota.title} · ${nota.level}`;
+      nodo.append(item);
     }
   }
 
@@ -155,6 +194,7 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
         escena = crearEscena(lienzo);
         escena.alElegir((espacioId) => {
           seleccion = cajas.find((caja) => caja.id === espacioId) ?? null;
+          escena?.resaltar(seleccion?.id ?? null);
           pintarPanel();
         });
       } catch {
@@ -162,6 +202,8 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
       }
     }
     escena?.fijarCajas(cajas, detalle.levels, filtro.value);
+    escena?.encuadrar();
+    void pintarNotas();
   }
 
   raiz.querySelector("#tokens")!.innerHTML = ["staff", "acme", "brick"]
@@ -170,8 +212,13 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
   raiz.querySelector("#tokens")!.addEventListener("click", (evento) => {
     const objetivo = evento.target as HTMLElement;
     const nombre = objetivo.dataset.token;
-    if (nombre) void elegirToken(nombre);
+    if (nombre) {
+      raiz.querySelectorAll("#tokens button").forEach((boton) => boton.classList.toggle("activo", boton === objetivo));
+      void elegirToken(nombre);
+    }
   });
+  raiz.querySelector("#buscar")!.addEventListener("input", filtrarLista);
+  raiz.querySelector("#encuadrar")!.addEventListener("click", () => escena?.encuadrar());
   raiz.querySelector("#filtro")!.addEventListener("change", () => {
     escena?.fijarCajas(cajas, detalle?.levels ?? [], (raiz.querySelector("#filtro") as HTMLSelectElement).value);
   });
@@ -213,7 +260,10 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
       const worker = new Worker(new URL("./trabajador-nube.ts", import.meta.url), { type: "module" });
       worker.onmessage = (evento: MessageEvent<{ ok: boolean; puntos?: Punto[] }>) => {
         worker.terminate();
-        if (evento.data.ok && evento.data.puntos) pintar(evento.data.puntos);
+        if (evento.data.ok && evento.data.puntos) {
+          raiz.querySelector("#estado")!.textContent = `${evento.data.puntos.length.toLocaleString("en-US")} points`;
+          pintar(evento.data.puntos);
+        }
         else fallar();
       };
       worker.postMessage(buffer, [buffer]);
@@ -238,6 +288,10 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     });
     const cuerpo = (await respuesta.json()) as { id?: string; error?: string };
     raiz.querySelector("#resultado")!.textContent = respuesta.ok ? `Saved ${cuerpo.id}` : (cuerpo.error ?? "Bad request");
+    if (respuesta.ok) {
+      (raiz.querySelector("#titulo") as HTMLInputElement).value = "";
+      void pintarNotas();
+    }
   });
 }
 

@@ -8,6 +8,7 @@ import {
   cargarProyectos,
   etagDe,
   idValido,
+  leerReportes,
   rutaNube,
 } from "./almacen.js";
 import { buscarVisible, detallePara, listar } from "./catalogo.js";
@@ -88,6 +89,24 @@ export function crearRutas(): Router {
       return;
     }
     enviarArchivo(res, ruta, req.header("range"));
+  });
+
+  rutas.get("/api/projects/:id/issues", (req, res) => {
+    if (!idValido(req.params.id)) {
+      res.status(400).json({ error: "Bad request" });
+      return;
+    }
+    const proyecto = buscarVisible(cargarProyectos(), req.params.id, usuario(res));
+    if (!proyecto) {
+      noEncontrado(res);
+      return;
+    }
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json(
+      leerReportes()
+        .filter((reporte) => reporte.projectId === proyecto.id)
+        .map(({ id, title, level, spaceId }) => ({ id, title, level, ...(spaceId ? { spaceId } : {}) })),
+    );
   });
 
   rutas.post("/api/projects/:id/issues", (req, res) => {

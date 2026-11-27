@@ -10,6 +10,8 @@ export interface Escena {
   fijarPuntos: (puntos: Punto[]) => void;
   limpiarPuntos: () => void;
   alElegir: (callback: (id: string) => void) => void;
+  resaltar: (id: string | null) => void;
+  encuadrar: () => void;
   destruir: () => void;
 }
 
@@ -26,6 +28,7 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
   const grupo = new THREE.Group();
   escena.add(grupo);
   escena.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const mallas = new Map<string, THREE.Mesh>();
   let puntos: THREE.Points | null = null;
   let elegir: (id: string) => void = () => undefined;
   const rayo = new THREE.Raycaster();
@@ -60,6 +63,7 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
   return {
     fijarCajas(cajas, niveles, filtro) {
       grupo.clear();
+      mallas.clear();
       for (const caja of filtrarNivel(cajas, filtro)) {
         const malla = new THREE.Mesh(
           new THREE.BoxGeometry(caja.w, caja.d, caja.h),
@@ -68,6 +72,7 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
         malla.position.set(caja.x + caja.w / 2, caja.y + caja.d / 2, caja.z + caja.h / 2);
         malla.userData.id = caja.id;
         grupo.add(malla);
+        mallas.set(caja.id, malla);
       }
     },
     fijarPuntos(lista) {
@@ -94,6 +99,26 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
     },
     alElegir(callback) {
       elegir = callback;
+    },
+    resaltar(id) {
+      for (const [clave, malla] of mallas) {
+        const material = malla.material as THREE.MeshStandardMaterial;
+        material.emissive.set(clave === id ? "#fbbf24" : "#000000");
+        material.opacity = clave === id ? 1 : 0.85;
+      }
+    },
+    encuadrar() {
+      const caja = new THREE.Box3().setFromObject(grupo);
+      if (caja.isEmpty()) {
+        camara.position.set(20, 16, 20);
+        controles.target.set(0, 0, 0);
+        return;
+      }
+      const centro = caja.getCenter(new THREE.Vector3());
+      const tamano = caja.getSize(new THREE.Vector3());
+      const distancia = Math.max(tamano.x, tamano.y, tamano.z) * 1.8;
+      camara.position.set(centro.x + distancia, centro.y + distancia * 0.6, centro.z + distancia);
+      controles.target.copy(centro);
     },
     destruir() {
       window.removeEventListener("resize", ajustar);
