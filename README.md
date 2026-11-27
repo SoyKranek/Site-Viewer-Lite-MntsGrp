@@ -5,8 +5,10 @@
 Un solo comando, después de clonar:
 
 ```bash
-npm install && npm run build && npm start
+npm install && npm run clouds && npm run build && npm start
 ```
+
+Requiere Node 20 o superior para correr todo (happy-dom 21, usado en las pruebas, no admite Node 18). `clouds` genera las nubes de ejemplo.
 
 Abre http://localhost:3000. En desarrollo, `npm start` y `npm run dev:web` en dos terminales. Las pruebas: `npm test`.
 

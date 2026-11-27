@@ -10,7 +10,7 @@ function palabras(texto: string): number {
 
 describe("Entrega", () => {
   it("el README explica el arranque y npm test", () => {
-    expect(readme).toContain("npm install && npm run build && npm start");
+    expect(readme).toContain("npm install && npm run clouds && npm run build && npm start");
     expect(readme).toContain("npm test");
     expect(readme.toLowerCase()).toContain("cursor");
   });
