@@ -131,7 +131,9 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     const marca = ++generacion;
     descarga?.abortar();
     descarga = null;
+    cajas = [];
     escena?.limpiarPuntos();
+    escena?.fijarCajas([], [], "all");
     seleccion = null;
     pintarPanel();
     error("");
