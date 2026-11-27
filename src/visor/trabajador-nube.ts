@@ -2,10 +2,10 @@
 
 import { muestrearPts } from "./parser-pts";
 
-self.onmessage = (evento: MessageEvent<ArrayBuffer>) => {
+self.onmessage = (evento: MessageEvent<{ buffer: ArrayBuffer; maximo: number }>) => {
   try {
-    const nube = muestrearPts(evento.data);
-    self.postMessage({ ok: true, ...nube }, [nube.posiciones.buffer, nube.colores.buffer]);
+    const nube = muestrearPts(evento.data.buffer, evento.data.maximo);
+    self.postMessage({ ok: true, nube }, { transfer: [nube.posiciones.buffer, nube.colores.buffer] });
   } catch (error) {
     const mensaje = error instanceof Error ? error.message : "truncated";
     self.postMessage({ ok: false, mensaje });

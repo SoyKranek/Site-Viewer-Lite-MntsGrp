@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { descargarNube } from "../../src/visor/carga-nube";
-import { parsearPts } from "../../src/visor/parser-pts";
+import { cargarNube, descargarNube } from "../../src/visor/carga-nube";
+import { muestrearPts, parsearPts } from "../../src/visor/parser-pts";
 
 function pts(cantidad: number, cortado = false): ArrayBuffer {
   const bytes = cortado ? 20 : 16 + cantidad * 16;
@@ -46,5 +46,24 @@ describe("Nube", () => {
     const descarga = descargarNube("/cloud", "t", () => undefined, async () => new Response(flujo, { status: 200, headers: { "content-length": "10" } }));
     descarga.abortar();
     await expect(descarga.promesa).rejects.toThrow();
+  });
+
+  it("la muestra respeta el máximo", () => {
+    const nube = muestrearPts(pts(10), 4);
+    expect(nube.dibujados).toBeLessThanOrEqual(4);
+    expect(nube.total).toBe(10);
+  });
+
+  it("cancelar durante el análisis no entrega puntos", async () => {
+    let detenido = false;
+    const tarea = cargarNube("/cloud", "t", 10, () => undefined, async () => new Response(pts(1)), () => {
+      let entregar: () => void = () => undefined;
+      const promesa = new Promise<never>((_, rechazar) => (entregar = () => rechazar(new DOMException("Aborted", "AbortError"))));
+      return { promesa, abortar: () => { detenido = true; entregar(); } };
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    tarea.abortar();
+    await expect(tarea.promesa).rejects.toThrow(/Aborted/);
+    expect(detenido).toBe(true);
   });
 });

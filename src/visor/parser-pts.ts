@@ -9,7 +9,15 @@ export interface Punto {
   b: number;
 }
 
-export const MAX_PUNTOS = 250_000;
+export const MAX_PUNTOS = 1_000_000;
+export const MAX_PUNTOS_TACTIL = 500_000;
+const FASES = 4;
+
+// El material trabaja en color lineal; los bytes del archivo son sRGB.
+const A_LINEAL = Uint8Array.from({ length: 256 }, (_, v) => {
+  const c = v / 255;
+  return Math.round(255 * (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+});
 
 function cabecera(buffer: ArrayBuffer): { vista: DataView; cantidad: number } {
   if (buffer.byteLength < 16) throw new Error("truncated");
@@ -21,22 +29,35 @@ function cabecera(buffer: ArrayBuffer): { vista: DataView; cantidad: number } {
   return { vista, cantidad };
 }
 
-export function muestrearPts(buffer: ArrayBuffer): { total: number; dibujados: number; posiciones: Float32Array; colores: Float32Array } {
+export interface Nube {
+  total: number;
+  dibujados: number;
+  posiciones: Float32Array;
+  colores: Uint8Array;
+}
+
+/**
+ * Muestra uniforme de hasta `maximo` puntos. Se escriben intercalados: el primer
+ * cuarto del buffer ya cubre toda la nube y sirve para dibujar mientras se orbita.
+ */
+export function muestrearPts(buffer: ArrayBuffer, maximo: number = MAX_PUNTOS): Nube {
   const { vista, cantidad } = cabecera(buffer);
-  const paso = Math.max(1, Math.ceil(cantidad / MAX_PUNTOS));
+  const paso = Math.max(1, Math.ceil(cantidad / maximo));
   const dibujados = Math.ceil(cantidad / paso);
   const posiciones = new Float32Array(dibujados * 3);
-  const colores = new Float32Array(dibujados * 3);
+  const colores = new Uint8Array(dibujados * 3);
   let escrito = 0;
-  for (let i = 0; i < cantidad; i += paso) {
-    const base = 16 + i * 16;
-    posiciones[escrito * 3] = vista.getFloat32(base, true);
-    posiciones[escrito * 3 + 1] = vista.getFloat32(base + 4, true);
-    posiciones[escrito * 3 + 2] = vista.getFloat32(base + 8, true);
-    colores[escrito * 3] = vista.getUint8(base + 12) / 255;
-    colores[escrito * 3 + 1] = vista.getUint8(base + 13) / 255;
-    colores[escrito * 3 + 2] = vista.getUint8(base + 14) / 255;
-    escrito += 1;
+  for (let fase = 0; fase < FASES; fase += 1) {
+    for (let j = fase; j < dibujados; j += FASES) {
+      const base = 16 + j * paso * 16;
+      for (let eje = 0; eje < 3; eje += 1) {
+        const valor = vista.getFloat32(base + eje * 4, true);
+        if (!Number.isFinite(valor)) throw new Error("corrupt");
+        posiciones[escrito * 3 + eje] = valor;
+        colores[escrito * 3 + eje] = A_LINEAL[vista.getUint8(base + 12 + eje)];
+      }
+      escrito += 1;
+    }
   }
   return { total: cantidad, dibujados, posiciones, colores };
 }
