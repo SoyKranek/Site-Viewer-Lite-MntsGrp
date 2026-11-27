@@ -60,7 +60,7 @@ describe("Nube", () => {
     const respuesta = await request(aplicacion)
       .get("/api/projects/1201-30002/cloud")
       .set("Authorization", "Bearer staff-token")
-      .set("Range", "bytes=999999-999999");
+      .set("Range", "bytes=999999999-999999999");
     expect(respuesta.status).toBe(416);
   });
 

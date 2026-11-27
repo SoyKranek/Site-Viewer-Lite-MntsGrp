@@ -1,8 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { afterAll, describe, expect, it } from "vitest";
 import request from "supertest";
 import { crearAplicacion } from "../../src/api/servidor.js";
+import { archivoReportes } from "../../src/api/almacen.js";
 
 const aplicacion = crearAplicacion();
+const respaldo = existsSync(archivoReportes) ? readFileSync(archivoReportes, "utf8") : "[]";
+
+// El alta de esta prueba no debe quedar en los datos del proyecto.
+afterAll(() => writeFileSync(archivoReportes, respaldo));
 
 describe("Rutas", () => {
   it("lista, detalle, espacios, nube y alta con los tres tokens", async () => {
