@@ -39,4 +39,4 @@ Express y TypeScript para la API. El detalle usa `Cache-Control: private, no-cac
 
 ## IA
 
-Usé Cursor con el modelo Grok para el diseño, el código, las pruebas y estos textos. Usé Claude (Anthropic) para revisar la entrega contra el enunciado y corregir API, visor, estilos, pruebas y README.
+Usé Cursor con el modelo Grok para el diseño, el código, las pruebas y estos textos. Usé Claude (Anthropic) para revisar la entrega contra el enunciado y corregir API, visor, estilos, pruebas y README. Revisé las reglas del enunciado y las pruebas automáticas.
