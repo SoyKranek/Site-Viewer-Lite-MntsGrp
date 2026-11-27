@@ -14,8 +14,11 @@
 //
 // --truncate writes only 60 % of the body (the header still announces N): a file cut off mid-download.
 
-const fs = require('fs');
-const path = require('path');
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const [, , id, countArg, flag] = process.argv;
 if (!id) { console.error('usage: node tools/make-cloud.js <projectId> [count] [--truncate]'); process.exit(1); }

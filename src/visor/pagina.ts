@@ -8,13 +8,36 @@ import { parsearPts, type Punto } from "./parser-pts";
 
 const TOKENS: Record<string, string> = { staff: "staff-token", acme: "acme-token", brick: "brick-token" };
 
+const CUENTAS = {
+  staff: { nombre: "Dana Ortiz", rol: "Staff", alcance: "Every account. Contacts include email and phone." },
+  acme: { nombre: "Sam Lee", rol: "Client · Acme Builders", alcance: "Only Acme projects. Email and phone stay hidden." },
+  brick: { nombre: "Rita Gomez", rol: "Client · Brick & Co", alcance: "Only Brick & Co projects. Email and phone stay hidden." },
+} as const;
+
+interface Contacto {
+  name: string;
+  role: string;
+  email?: string;
+  phone?: string;
+}
+
+interface Resumen {
+  id: string;
+  name: string;
+  address?: string;
+  status?: string;
+  client?: string;
+}
+
 interface Detalle {
   id: string;
   name: string;
+  address?: string;
   status: string;
   client: string;
   dates: { signed: string | null; scan: string | null; estimatedDelivery: string | null; delivered: string | null };
   levels: string[];
+  contacts?: Contacto[];
 }
 
 export interface Cliente {
@@ -36,33 +59,42 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
   raiz.innerHTML = `
     <aside class="columna">
       <header class="marca"><strong>Site Viewer</strong><span>Lite</span></header>
-      <p class="seccion">Account</p>
+      <p id="sesion"></p>
+      <button id="salir" type="button">Sign out</button>
+      <p id="entrar" class="seccion">Sign in</p>
       <div id="tokens"></div>
-      <p class="seccion">Projects</p>
-      <input id="buscar" type="search" placeholder="Filter projects" />
-      <div id="lista"></div>
-      <div id="ficha"></div>
-      <label>Level <select id="filtro"><option value="all">All levels</option></select></label>
-      <div id="panel" class="panel"></div>
-      <div class="fila">
-        <button id="cargar" type="button">Load point cloud</button>
-        <button id="cancelar" type="button">Cancel</button>
+      <div id="trabajo">
+        <p class="seccion">Projects</p>
+        <input id="buscar" type="search" placeholder="Filter projects" />
+        <div id="lista"></div>
+        <div id="ficha"></div>
+        <label>Level <select id="filtro"><option value="all">All levels</option></select></label>
+        <div id="panel" class="panel"></div>
+        <div class="fila">
+          <button id="cargar" type="button">Load point cloud</button>
+          <button id="cancelar" type="button">Cancel</button>
+        </div>
+        <div class="fila">
+          <button id="encuadrar" type="button">Fit view</button>
+          <button id="unidad" type="button">ft²</button>
+        </div>
+        <progress id="progreso" value="0" max="1"></progress>
+        <p id="estado"></p>
+        <p id="error" class="error"></p>
+        <p class="seccion">Issues</p>
+        <ul id="notas"></ul>
+        <form id="reporte">
+          <input id="titulo" name="title" maxlength="120" placeholder="Title" />
+          <select id="nivel"></select>
+          <button type="submit">Save issue</button>
+          <p id="resultado"></p>
+        </form>
       </div>
-      <button id="encuadrar" type="button">Fit view</button>
-      <progress id="progreso" value="0" max="1"></progress>
-      <p id="estado"></p>
-      <p id="error" class="error"></p>
-      <p class="seccion">Issues</p>
-      <ul id="notas"></ul>
-      <form id="reporte">
-        <input id="titulo" name="title" maxlength="120" placeholder="Title" />
-        <select id="nivel"></select>
-        <button type="submit">Save issue</button>
-        <p id="resultado"></p>
-      </form>
-      <button id="unidad" type="button">ft²</button>
     </aside>
-    <canvas id="lienzo" class="lienzo"></canvas>`;
+    <main class="escenario">
+      <p id="vacio">Sign in with a staff or client account. Each account sees a different set of projects.</p>
+      <canvas id="lienzo" class="lienzo"></canvas>
+    </main>`;
 
   let token = "";
   let proyecto = "";
@@ -83,7 +115,7 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
   function pintarPanel() {
     const panel = raiz.querySelector("#panel")!;
     if (!seleccion) {
-      panel.textContent = "";
+      panel.textContent = proyecto ? "Select a room in the model." : "";
       return;
     }
     const area = unidad === "m" ? `${areaMetros(seleccion).toFixed(1)} m²` : `${areaPies(seleccion)} ft²`;
@@ -111,15 +143,29 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
   function pintarFicha() {
     if (!detalle) return;
     const fechas = detalle.dates;
-    raiz.querySelector("#ficha")!.textContent = [
-      detalle.name,
-      detalle.client,
-      detalle.status,
+    const contactos = (detalle.contacts ?? [])
+      .map((contacto) => [contacto.name, contacto.role, contacto.email, contacto.phone].filter(Boolean).join(" · "))
+      .join(" ");
+    const ficha = raiz.querySelector("#ficha")!;
+    ficha.replaceChildren();
+    const titulo = document.createElement("strong");
+    titulo.textContent = detalle.name;
+    const meta = document.createElement("p");
+    meta.textContent = [detalle.client, detalle.status, detalle.address].filter(Boolean).join(" · ");
+    const fechasNodo = document.createElement("p");
+    fechasNodo.textContent = [
       textoFecha(fechas.signed),
       textoFecha(fechas.scan),
       textoFecha(fechas.estimatedDelivery),
       textoFecha(fechas.delivered),
     ].join(" · ");
+    ficha.append(titulo, meta, fechasNodo);
+    if (contactos) {
+      const nodo = document.createElement("p");
+      nodo.textContent = contactos;
+      ficha.append(nodo);
+    }
+    raiz.querySelector("#vacio")!.textContent = detalle.name;
   }
 
   async function elegirToken(nombre: string) {
@@ -127,13 +173,23 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     limpiarEscena();
     token = TOKENS[nombre];
     const respuesta = await cliente.get("/api/projects", token);
-    const lista = (await respuesta.json()) as { id: string; name: string }[];
+    const lista = (await respuesta.json()) as Resumen[];
+    const cuenta = CUENTAS[nombre as keyof typeof CUENTAS];
+    raiz.classList.add("dentro");
+    raiz.querySelector("#sesion")!.textContent = `${cuenta.nombre} · ${cuenta.rol}. ${cuenta.alcance}`;
     const nodo = raiz.querySelector("#lista")!;
     nodo.innerHTML = "";
     for (const item of lista) {
       const boton = document.createElement("button");
       boton.type = "button";
-      boton.textContent = item.name;
+      const nombreProyecto = document.createElement("strong");
+      nombreProyecto.textContent = item.name;
+      boton.append(nombreProyecto);
+      if (item.status || item.client) {
+        const extra = document.createElement("span");
+        extra.textContent = [item.status, item.client].filter(Boolean).join(" · ");
+        boton.append(extra);
+      }
       boton.addEventListener("click", () => {
         nodo.querySelectorAll("button").forEach((otro) => otro.classList.remove("activo"));
         boton.classList.add("activo");
@@ -183,7 +239,10 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     ]);
     if (marca !== generacion) return;
     detalle = (await det.json()) as Detalle;
-    cajas = (await esp.json()) as Caja[];
+    detalle.levels = Array.isArray(detalle.levels) ? detalle.levels : [];
+    detalle.dates = detalle.dates ?? { signed: null, scan: null, estimatedDelivery: null, delivered: null };
+    const espacios = (await esp.json()) as Caja[];
+    cajas = Array.isArray(espacios) ? espacios : [];
     pintarFicha();
     const filtro = raiz.querySelector<HTMLSelectElement>("#filtro")!;
     const nivel = raiz.querySelector<HTMLSelectElement>("#nivel")!;
@@ -206,12 +265,24 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     void pintarNotas();
   }
 
-  raiz.querySelector("#tokens")!.innerHTML = ["staff", "acme", "brick"]
-    .map((nombre) => `<button type="button" data-token="${nombre}">${nombre}</button>`)
+  raiz.querySelector("#tokens")!.innerHTML = (Object.keys(CUENTAS) as (keyof typeof CUENTAS)[])
+    .map((nombre) => {
+      const cuenta = CUENTAS[nombre];
+      return `<button type="button" data-token="${nombre}"><strong>${cuenta.nombre}</strong><span>${nombre} · ${cuenta.rol}</span></button>`;
+    })
     .join("");
+  raiz.querySelector("#salir")!.addEventListener("click", () => {
+    generacion += 1;
+    token = "";
+    raiz.classList.remove("dentro");
+    raiz.querySelector("#sesion")!.textContent = "";
+    raiz.querySelector("#vacio")!.textContent = "Sign in with a staff or client account. Each account sees a different set of projects.";
+    limpiarEscena();
+    raiz.querySelector("#lista")!.innerHTML = "";
+  });
   raiz.querySelector("#tokens")!.addEventListener("click", (evento) => {
-    const objetivo = evento.target as HTMLElement;
-    const nombre = objetivo.dataset.token;
+    const objetivo = (evento.target as HTMLElement).closest<HTMLElement>("[data-token]");
+    const nombre = objetivo?.dataset.token;
     if (nombre) {
       raiz.querySelectorAll("#tokens button").forEach((boton) => boton.classList.toggle("activo", boton === objetivo));
       void elegirToken(nombre);
@@ -258,11 +329,11 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     const fallar = () => error("The point cloud could not be read. Try again");
     try {
       const worker = new Worker(new URL("./trabajador-nube.ts", import.meta.url), { type: "module" });
-      worker.onmessage = (evento: MessageEvent<{ ok: boolean; puntos?: Punto[] }>) => {
+      worker.onmessage = (evento: MessageEvent<{ ok: boolean; posiciones?: Float32Array; colores?: Float32Array; total?: number; dibujados?: number }>) => {
         worker.terminate();
-        if (evento.data.ok && evento.data.puntos) {
-          raiz.querySelector("#estado")!.textContent = `${evento.data.puntos.length.toLocaleString("en-US")} points`;
-          pintar(evento.data.puntos);
+        if (evento.data.ok && evento.data.posiciones && evento.data.colores) {
+          raiz.querySelector("#estado")!.textContent = `${evento.data.dibujados!.toLocaleString("en-US")} of ${evento.data.total!.toLocaleString("en-US")} points`;
+          escena?.fijarNube(evento.data.posiciones, evento.data.colores);
         }
         else fallar();
       };

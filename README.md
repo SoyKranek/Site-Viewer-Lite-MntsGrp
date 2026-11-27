@@ -16,13 +16,19 @@ La nube grande se genera con el kit: `node site-viewer-lite-starter/tools/make-c
 
 API con token Bearer, lista y detalle, espacios, rango de la nube y reportes en `data/issues.json`. El campo `internal` no sale. Un proyecto ajeno responde como si no existiera. La página en inglés lista proyectos, dibuja cajas, carga la nube en un worker con progreso y cancelación, y envía reportes.
 
+## Nube de 2 millones
+
+`node site-viewer-lite-starter/tools/make-cloud.js 1201-30001` escribe `site-viewer-lite-starter/data/clouds/1201-30001.pts` (2 000 000 puntos, unos 32 MB). Ese binario no va en Git.
+
+El worker lee el archivo completo y dibuja como máximo 250 000 puntos, uno de cada ocho, en `Float32Array`. Dos millones de objetos en el hilo principal congelarían la pestaña; la muestra uniforme mantiene la forma del edificio y deja orbitar. La barra dice cuántos puntos se anuncian y cuántos se dibujan.
+
 ## Falta
 
-No medí la órbita de 2 millones de puntos en un computador ni en un iPad. El repositorio no incluye esos binarios grandes: hay que generarlos. No hay despliegue.
+No lo probé en un iPad físico. No hay despliegue.
 
 ## Un día más
 
-Mediría los 2 millones de puntos y, si hiciera falta, bajaría densidad en el worker. Añadiría hashes a los estáticos para que un deploy no deje la versión vieja en caché.
+Mediría la órbita en un iPad y, si hiciera falta, bajaría el tope de 250 000. Añadiría hashes a los estáticos para que un deploy no deje la versión vieja en caché.
 
 ## Decisiones
 

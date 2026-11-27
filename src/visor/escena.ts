@@ -8,6 +8,7 @@ import type { Punto } from "./parser-pts";
 export interface Escena {
   fijarCajas: (cajas: Caja[], niveles: string[], filtro: string) => void;
   fijarPuntos: (puntos: Punto[]) => void;
+  fijarNube: (posiciones: Float32Array, colores: Float32Array) => void;
   limpiarPuntos: () => void;
   alElegir: (callback: (id: string) => void) => void;
   resaltar: (id: string | null) => void;
@@ -75,9 +76,18 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
         mallas.set(caja.id, malla);
       }
     },
-    fijarPuntos(lista) {
-      if (puntos) escena.remove(puntos);
+    fijarNube(posiciones, colores) {
+      if (puntos) {
+        escena.remove(puntos);
+        puntos.geometry.dispose();
+      }
       const geometria = new THREE.BufferGeometry();
+      geometria.setAttribute("position", new THREE.BufferAttribute(posiciones, 3));
+      geometria.setAttribute("color", new THREE.BufferAttribute(colores, 3));
+      puntos = new THREE.Points(geometria, new THREE.PointsMaterial({ size: 0.03, vertexColors: true }));
+      escena.add(puntos);
+    },
+    fijarPuntos(lista) {
       const posiciones = new Float32Array(lista.length * 3);
       const colores = new Float32Array(lista.length * 3);
       lista.forEach((punto, i) => {
@@ -88,10 +98,7 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
         colores[i * 3 + 1] = punto.g / 255;
         colores[i * 3 + 2] = punto.b / 255;
       });
-      geometria.setAttribute("position", new THREE.BufferAttribute(posiciones, 3));
-      geometria.setAttribute("color", new THREE.BufferAttribute(colores, 3));
-      puntos = new THREE.Points(geometria, new THREE.PointsMaterial({ size: 0.05, vertexColors: true }));
-      escena.add(puntos);
+      this.fijarNube(posiciones, colores);
     },
     limpiarPuntos() {
       if (puntos) escena.remove(puntos);
