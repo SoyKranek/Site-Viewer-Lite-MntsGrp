@@ -1,5 +1,7 @@
 /** Servidor Express. El JSON mal formado llega como 400. */
 
+import { existsSync } from "node:fs";
+import path from "node:path";
 import express from "express";
 import { crearRutas } from "./rutas.js";
 
@@ -18,6 +20,8 @@ export function crearAplicacion() {
     next(error);
   });
   aplicacion.use(crearRutas());
+  const dist = path.resolve("dist");
+  if (existsSync(dist)) aplicacion.use(express.static(dist));
   return aplicacion;
 }
 

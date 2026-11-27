@@ -1,0 +1,12 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow-x: hidden; font-family: sans-serif; }
+#app { display: flex; min-height: 100%; }
+.columna { display: flex; flex-direction: column; gap: 8px; padding: 12px; width: 280px; }
+button, select, input { min-height: 44px; min-width: 44px; font-size: 16px; }
+.lienzo { flex: 1; min-width: 0; min-height: 320px; background: #111827; }
+.panel { min-height: 88px; }
+.error { color: #9f1239; }
+@media (max-width: 900px) {
+  #app { flex-direction: column; }
+  .columna { width: 100%; }
+}
