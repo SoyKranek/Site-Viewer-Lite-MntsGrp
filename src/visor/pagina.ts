@@ -306,6 +306,13 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     );
   }
 
+  function opcion(texto: string, valor: string): HTMLOptionElement {
+    const nodo = document.createElement("option");
+    nodo.textContent = texto;
+    nodo.value = valor;
+    return nodo;
+  }
+
   async function elegirProyecto(id: string) {
     const marca = ++generacion;
     limpiarEscena();
@@ -334,9 +341,9 @@ export function montarPagina(raiz: HTMLElement, cliente: Cliente = clienteReal):
     pintarFicha();
     pintarPanel();
     pintarLeyenda(detalle.levels);
-    // new Option trata el texto como texto, no como HTML.
-    uno("#filtro").replaceChildren(new Option("All levels", "all"), ...detalle.levels.map((n) => new Option(n, n)));
-    uno("#nivel").replaceChildren(...detalle.levels.map((n) => new Option(n, n)));
+    // textContent trata el nivel como texto, no como HTML.
+    uno("#filtro").replaceChildren(opcion("All levels", "all"), ...detalle.levels.map((n) => opcion(n, n)));
+    uno("#nivel").replaceChildren(...detalle.levels.map((n) => opcion(n, n)));
     if (!escena) {
       try {
         escena = crearEscena(lienzo);

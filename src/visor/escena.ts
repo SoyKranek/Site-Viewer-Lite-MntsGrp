@@ -118,7 +118,7 @@ export function crearEscena(lienzo: HTMLCanvasElement): Escena {
   }
 
   function vaciarCajas() {
-    grupo.traverse((objeto) => {
+    grupo.traverse((objeto: THREE.Object3D) => {
       if (objeto instanceof THREE.Mesh || objeto instanceof THREE.LineSegments) {
         objeto.geometry.dispose();
         (objeto.material as THREE.Material).dispose();
