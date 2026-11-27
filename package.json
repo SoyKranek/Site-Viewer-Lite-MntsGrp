@@ -7,7 +7,9 @@
     "dev:web": "vite",
     "build": "vite build",
     "start": "tsx src/api/servidor.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clouds": "node site-viewer-lite-starter/tools/make-cloud.js 1201-30001 && node site-viewer-lite-starter/tools/make-cloud.js 1201-30002 400000"
   },
   "dependencies": {
     "express": "^4.21.2",
