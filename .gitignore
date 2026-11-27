@@ -1,6 +1,6 @@
 node_modules/
 *.tmp
-site-viewer-lite-starter/data/clouds/1201-30001.pts
+site-viewer-lite-starter/data/clouds/*.pts
 dist/
 aidlc/
 AGENTS.md

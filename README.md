@@ -33,6 +33,10 @@ No está medido en un iPad físico (ni los cuadros por segundo ni la memoria). N
 
 Mediría órbita y memoria en un iPad y ajustaría los topes. Interpretaría el archivo por tramos dentro del worker para no tenerlo entero en memoria.
 
+## Avisos de npm
+
+`npm audit` deja 3 avisos en Vitest y sus dependencias: 1 moderado y 2 críticos. Son herramientas de pruebas, no el visor ni la API. No se usó `npm audit fix --force`: esa vía bajaría Vitest a 2.0.5 y puede romper las pruebas. Se conservan Vitest 3.2.7 y happy-dom 21.0.4.
+
 ## Decisiones
 
 Express y TypeScript para la API. El detalle usa `Cache-Control: private, no-cache`, `Vary: Authorization` y ETag: el navegador puede revalidar y las cachés compartidas no lo guardan. Los assets con hash se cachean un año y el HTML se revalida siempre. Vite y three.js para la página. Los datos siguen en el JSON del kit. El área en metros es ancho por fondo; en pies se multiplica por 10.7639.
